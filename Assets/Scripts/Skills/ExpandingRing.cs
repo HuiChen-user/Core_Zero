@@ -36,13 +36,10 @@ public class ExpandingRing : MonoBehaviour
         // 1. 增加半径
         currentRadius += expansionSpeed * Time.deltaTime;
 
-        // 2. 检查是否达到最大半径
-        if (currentRadius >= maxRadius)
-        {
-            Destroy(gameObject); // 销毁自身
-            return;
-        }
-
+        // 2. 检测并触发交互（核心逻辑）
+        DetectAndInteract();
+        
+        
         // 3. 绘制圆环
         DrawCircle();
         

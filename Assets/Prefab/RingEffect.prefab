@@ -152,3 +152,6 @@ MonoBehaviour:
   expansionSpeed: 3
   maxRadius: 10
   segments: 50
+  targetLayer:
+    serializedVersion: 2
+    m_Bits: 4294967295
