@@ -387,5 +387,20 @@ namespace StarterAssets
                     FootstepAudioVolume);
             }
         }
+        
+        /// <summary>
+        /// 外部强制重置角色的垂直速度（用于钩锁结束后防止瞬间坠落）
+        /// </summary>
+        public void ResetVerticalVelocity()
+        {
+            _verticalVelocity = -2f; // 设置为一个小的负值，确保落地检测正常
+            _jumpTimeoutDelta = JumpTimeout;
+            _fallTimeoutDelta = FallTimeout;
+            if (_hasAnimator)
+            {
+                _animator.SetBool(_animIDJump, false);
+                _animator.SetBool(_animIDFreeFall, false);
+            }
+        }
     }
 }
