@@ -1,9 +1,8 @@
 using UnityEngine;
 
-// 这是一个接口，它不干活，只定义“必须干什么”
 public interface IRingInteractable
 {
-    // 所有能被圆环影响的物体，都必须实现这个方法
-    // ringCenter: 传入圆心位置，方便物体计算推力方向
-    void OnRingHit(Vector3 ringCenter);
+    // 修改前：void OnRingHit(Vector3 ringCenter);
+    // 修改后：传入圆环脚本本身，这样物体就能读取圆环的位置，也能调用圆环的方法
+    void OnRingHit(ExpandingRing ring);
 }

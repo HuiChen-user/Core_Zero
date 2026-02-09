@@ -6,11 +6,13 @@ public class PushableBox : MonoBehaviour, IRingInteractable // 注意这里继�
     public float pushForce = 10f;
 
     // 实现接口强制要求的方法
-    public void OnRingHit(Vector3 ringCenter)
+    public void OnRingHit(ExpandingRing ring)
     {
         Rigidbody rb = GetComponent<Rigidbody>();
         Collider col = GetComponent<Collider>(); // 获取自身的碰撞器
 
+        Vector3 ringCenter = ring.transform.position;
+        
         // 1. 找到箱子表面离圆心最近的点（这才是真正的“受力点”）
         Vector3 closestPoint = col.ClosestPoint(ringCenter);
 

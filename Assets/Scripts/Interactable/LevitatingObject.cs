@@ -28,7 +28,7 @@ public class LevitatingObject : MonoBehaviour, IRingInteractable
     }
 
     // 实现接口：被圆环击中
-    public void OnRingHit(Vector3 ringCenter)
+    public void OnRingHit(ExpandingRing ring)
     {
         // 如果正在上升或悬浮，就忽略这次撞击
         if (isInteracting) return;
