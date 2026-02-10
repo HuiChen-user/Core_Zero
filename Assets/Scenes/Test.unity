@@ -417,11 +417,17 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   forceDirection: {x: 0, y: 0, z: 1}
-  forceMagnitude: 20
-  interval: 2
+  wavePattern:
+  - interval: 2
+    force: 15
+    repeatCount: 2
+  - interval: 5
+    force: 30
+    repeatCount: 1
   startDelay: 0.5
   gizmoColor: {r: 1, g: 0, b: 0, a: 0.3}
   arrowLength: 2
+  showDebugInfo: 1
 --- !u!65 &459185524
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -441,8 +447,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 2.6525028, y: 2.669327, z: 2.788372}
-  m_Center: {x: 0.8262514, y: 0.8346635, z: -0.894186}
+  m_Size: {x: 2.6525028, y: 2.669327, z: 5.512907}
+  m_Center: {x: 0.8262514, y: 0.8346635, z: -2.2564535}
 --- !u!4 &459185525
 Transform:
   m_ObjectHideFlags: 0
@@ -452,7 +458,7 @@ Transform:
   m_GameObject: {fileID: 459185522}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -2.54, y: 0.549, z: -6.76}
+  m_LocalPosition: {x: -2.54, y: 0.59185886, z: -6.721836}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
