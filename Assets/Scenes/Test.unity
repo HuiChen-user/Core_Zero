@@ -378,7 +378,7 @@ MonoBehaviour:
     m_Bits: 64
   maxDistance: 50
   grappleSpeed: 20
-  arrivalOffset: {x: 0, y: 2, z: 0}
+  arrivalOffset: {x: 0, y: 1.5, z: 0}
   stoppingDistance: 0
   crosshairUI: {fileID: 1439890331}
 --- !u!1 &353938178 stripped
