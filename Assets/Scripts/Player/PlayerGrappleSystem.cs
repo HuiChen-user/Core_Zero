@@ -151,7 +151,7 @@ public class PlayerGrappleSystem : MonoBehaviour
     }*/
 
     // 核心：飞向目标的协程
-    IEnumerator GrappleMovementRoutine(Vector3 targetPosition)
+    /*IEnumerator GrappleMovementRoutine(Vector3 targetPosition)
     {
         isGrappling = true;
 
@@ -183,6 +183,63 @@ public class PlayerGrappleSystem : MonoBehaviour
         
         // 【关键】重新启用 StarterAssets 控制器
         tpc.enabled = true;
+        
+        isGrappling = false;
+    }*/
+    
+    // 核心：飞向目标的协程
+    IEnumerator GrappleMovementRoutine(Vector3 targetPosition)
+    {
+        isGrappling = true;
+
+        // 1. 禁用 TPC 的每帧逻辑（防止它在空中乱算重力），但保持组件开启
+        tpc.enabled = false;
+
+        // 2. 【温和的幽灵模式】
+        // 不要禁用 controller.enabled，只关闭碰撞检测
+        // 这样既不会穿墙反弹，也不会丢失控制器的内部速度状态
+        bool originalDetect = controller.detectCollisions;
+        controller.detectCollisions = false;
+
+        // 3. 循环移动 (纯数学位移)
+        while (true)
+        {
+            float dist = Vector3.Distance(transform.position, targetPosition);
+            if (dist <= stoppingDistance) break;
+
+            float moveStep = grappleSpeed * Time.deltaTime;
+
+            if (moveStep >= dist - stoppingDistance)
+            {
+                // 最后一步：直接定位到目标点，不再进行 CharacterController 的计算
+                // 我们自己算坐标，不仅防抖，还防过冲
+                Vector3 finalDir = (targetPosition - transform.position).normalized;
+                transform.position += finalDir * (dist - stoppingDistance);
+                break;
+            }
+
+            // 正常移动：直接修改 transform，无视物理引擎
+            transform.position = Vector3.MoveTowards(transform.position, targetPosition, moveStep);
+
+            // 【已删除】旋转角色的代码
+            // transform.forward = ... 这行代码会导致你说的“旋转失控”，删掉它！
+            
+            yield return null;
+        }
+
+        // 4. 【着陆修复】
+        // 先恢复碰撞检测
+        controller.detectCollisions = originalDetect;
+        
+        // 重置 TPC 的垂直速度，防止它以为你在自由落体
+        tpc.ResetVerticalVelocity();
+        
+        // 重新启用 TPC
+        tpc.enabled = true;
+
+        // 【补丁】强制让 TPC 在这一帧认为自己已经着陆
+        // 这里的 Grounded 是 TPC 的公有变量（如果没有 public，请去 TPC 脚本里把 Grounded 改成 public）
+        tpc.Grounded = true; 
         
         isGrappling = false;
     }
