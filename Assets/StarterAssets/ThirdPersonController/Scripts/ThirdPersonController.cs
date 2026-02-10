@@ -448,6 +448,8 @@ namespace StarterAssets
         /// <param name="force">The magnitude of the force.</param>
         public void AddImpact(Vector3 dir, float force)
         {
+            if (IsAnchored) return; // Ignore external forces when anchored
+            
             dir.Normalize();
             if (dir.y < 0) dir.y = -dir.y; // reflect down force on ground
             _impact += dir.normalized * force / Mass;
