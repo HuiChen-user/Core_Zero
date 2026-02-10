@@ -62,6 +62,9 @@ namespace StarterAssets
         [Tooltip("What layers the character uses as ground")]
         public LayerMask GroundLayers;
 
+        [Header("Status")]
+        public bool IsAnchored = false;
+
         [Header("Cinemachine")]
         [Tooltip("The follow target set in the Cinemachine Virtual Camera that the camera will follow")]
         public GameObject CinemachineCameraTarget;
@@ -219,6 +222,19 @@ namespace StarterAssets
 
         private void Move()
         {
+            if (IsAnchored)
+            {
+                _speed = 0f;
+                _animationBlend = 0f;
+                // If anchored, stop all movement and return
+                 if (_hasAnimator)
+                {
+                    _animator.SetFloat(_animIDSpeed, 0f);
+                    _animator.SetFloat(_animIDMotionSpeed, 0f);
+                }
+                return;
+            }
+
             // set target speed based on move speed, sprint speed and if sprint is pressed
             float targetSpeed = _input.sprint ? SprintSpeed : MoveSpeed;
 
@@ -294,6 +310,12 @@ namespace StarterAssets
 
         private void JumpAndGravity()
         {
+            if (IsAnchored)
+            {
+                _verticalVelocity = 0f; // No gravity accumulation
+                return;
+            }
+
             if (Grounded)
             {
                 // reset the fall timeout timer
