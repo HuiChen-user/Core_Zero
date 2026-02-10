@@ -44,6 +44,12 @@ namespace StarterAssets
         [Tooltip("Time required to pass before entering the fall state. Useful for walking down stairs")]
         public float FallTimeout = 0.15f;
 
+        [Header("Physics")]
+        [Tooltip("Character mass for impact calculation")]
+        public float Mass = 3.0f;
+        [Tooltip("How fast the impact force decays")]
+        public float Damping = 5.0f;
+
         [Header("Player Grounded")]
         [Tooltip("If the character is grounded or not. Not part of the CharacterController built in grounded check")]
         public bool Grounded = true;
@@ -83,6 +89,9 @@ namespace StarterAssets
         private float _rotationVelocity;
         private float _verticalVelocity;
         private float _terminalVelocity = 53.0f;
+        
+        // impact
+        private Vector3 _impact = Vector3.zero;
 
         // timeout deltatime
         private float _jumpTimeoutDelta;
@@ -264,6 +273,13 @@ namespace StarterAssets
 
             Vector3 targetDirection = Quaternion.Euler(0.0f, _targetRotation, 0.0f) * Vector3.forward;
 
+            // apply impact force
+            if (_impact.magnitude > 0.2f)
+            {
+                _controller.Move(_impact * Time.deltaTime);
+            }
+            _impact = Vector3.Lerp(_impact, Vector3.zero, Damping * Time.deltaTime);
+
             // move the player
             _controller.Move(targetDirection.normalized * (_speed * Time.deltaTime) +
                              new Vector3(0.0f, _verticalVelocity, 0.0f) * Time.deltaTime);
@@ -401,6 +417,18 @@ namespace StarterAssets
                 _animator.SetBool(_animIDJump, false);
                 _animator.SetBool(_animIDFreeFall, false);
             }
+        }
+
+        /// <summary>
+        /// Adds an external impact force to the character.
+        /// </summary>
+        /// <param name="dir">The direction of the force.</param>
+        /// <param name="force">The magnitude of the force.</param>
+        public void AddImpact(Vector3 dir, float force)
+        {
+            dir.Normalize();
+            if (dir.y < 0) dir.y = -dir.y; // reflect down force on ground
+            _impact += dir.normalized * force / Mass;
         }
     }
 }
