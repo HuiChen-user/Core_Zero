@@ -454,5 +454,16 @@ namespace StarterAssets
             if (dir.y < 0) dir.y = -dir.y; // reflect down force on ground
             _impact += dir.normalized * force / Mass;
         }
+
+        private void OnControllerColliderHit(ControllerColliderHit hit)
+        {
+            if (hit == null || hit.gameObject == null) return;
+            
+            TransformCollisionReactor reactor = hit.gameObject.GetComponent<TransformCollisionReactor>();
+            if (reactor != null)
+            {
+                reactor.OnHitByPlayer();
+            }
+        }
     }
 }
