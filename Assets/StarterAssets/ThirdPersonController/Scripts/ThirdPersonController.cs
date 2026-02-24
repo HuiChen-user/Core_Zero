@@ -459,10 +459,11 @@ namespace StarterAssets
         {
             if (hit == null || hit.gameObject == null) return;
             
-            TransformCollisionReactor reactor = hit.gameObject.GetComponent<TransformCollisionReactor>();
+            // 使用 GetComponentInParent 能够使得碰撞子物体也能触发父物体的 Reactor
+            TransformCollisionReactor reactor = hit.gameObject.GetComponentInParent<TransformCollisionReactor>();
             if (reactor != null)
             {
-                reactor.OnHitByPlayer();
+                reactor.OnHitByPlayer(hit);
             }
         }
     }

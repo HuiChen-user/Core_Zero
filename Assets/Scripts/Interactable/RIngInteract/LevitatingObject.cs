@@ -80,7 +80,7 @@ public class LevitatingObject : MonoBehaviour, IRingInteractable
         rb.WakeUp(); // 唤醒刚体，确保它立刻开始下落
         
         // 稍微给一个向下的初速度，手感更好（可选）
-        // rb.velocity = Vector3.down * 2f; 
+         rb.velocity = Vector3.down * 2f; 
 
         // 流程结束，允许再次被触发
         // (如果你希望它落地稳住后才能再次触发，可以在这里加个简单的落地检测逻辑，

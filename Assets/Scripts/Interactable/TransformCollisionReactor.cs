@@ -20,6 +20,18 @@ namespace StarterAssets
         [Tooltip("参考框的颜色")]
         public Color gizmoColor = new Color(0, 1, 0, 0.5f);
         
+        [Header("Trigger Conditions")]
+        [Tooltip("可选：指定必须碰撞的特定子物体(例如只放一个贴在某一面的BoxCollider)。如果不指定，则碰撞自身或任意子物体都会触发。")]
+        public GameObject requiredTriggerObject;
+        
+        [Tooltip("可选：是否启用按碰撞面法线方向触发。")]
+        public bool useNormalDetection = false;
+        [Tooltip("必须碰撞的法线方向(世界坐标系)。例如(0,1,0)表示只能从正上方踩踏触发。")]
+        public Vector3 validHitNormal = Vector3.up;
+        [Tooltip("法线容差，1表示必须完全一致，0.5表示允许一定角度倾斜")]
+        [Range(0f, 1f)]
+        public float normalTolerance = 0.9f;
+
         private bool _hasTriggered = false;
         private Canvas _uiCanvas;
         private Image _progressBar;
@@ -34,13 +46,29 @@ namespace StarterAssets
             CreateProgressBar();
         }
         
-        public void OnHitByPlayer()
+        public void OnHitByPlayer(ControllerColliderHit hit)
         {
             // 如果已经触发过，则不再响应，保证只触发一次并停留在目标值
-            if (!_hasTriggered)
+            if (_hasTriggered) return;
+
+            // 1. 检查是否碰撞了指定的触发物体
+            if (requiredTriggerObject != null && hit.gameObject != requiredTriggerObject)
             {
-                StartCoroutine(AnimateTransform());
+                return;
             }
+
+            // 2. 检查法线方向是否符合要求
+            if (useNormalDetection)
+            {
+                // hit.normal 是碰撞点表面的法线方向
+                float dotProduct = Vector3.Dot(hit.normal.normalized, validHitNormal.normalized);
+                if (dotProduct < normalTolerance)
+                {
+                    return; // 角度偏差过大，不触发
+                }
+            }
+
+            StartCoroutine(AnimateTransform());
         }
         
         private IEnumerator AnimateTransform()
