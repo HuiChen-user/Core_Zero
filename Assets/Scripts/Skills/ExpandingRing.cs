@@ -90,34 +90,48 @@ public class ExpandingRing : MonoBehaviour
         // 获取当前半径内的所有碰撞体
         Collider[] hits = Physics.OverlapSphere(transform.position, currentRadius, targetLayer);
 
-        var sortedHits = hits.OrderBy(h => Vector3.Distance(transform.position, h.ClosestPoint(transform.position))).ToArray();
+        var sortedHits = hits
+            .Where(h => h != null)
+            .OrderBy(h => Vector3.Distance(transform.position, h.ClosestPoint(transform.position)))
+            .ToArray();
         
         foreach (var hit in sortedHits)
         {
             if (isDissipated) break;
             
+            // 关键：因为在前一个物体的交互（比如破碎逻辑里直接 Destroy(物体)）之后
+            // 后面的碰撞体可能在这同一帧已经跟着父物体一起被销毁了！
+            // 尝试访问被销毁的受害者会导致引擎底层的激烈报错（甚至影响 Editor UI绘制）
+            if (hit == null || hit.gameObject == null) continue;
+
             GameObject target = hit.gameObject;
 
-            // 如果这个物体还没被处理过
-            if (!hitObjects.Contains(target))
+            // 关键修改：用根节点（或带刚体的父节点）作为唯一身份标识
+            GameObject rootIdentity = target.transform.root.gameObject;
+            Rigidbody rb = target.GetComponentInParent<Rigidbody>();
+            if (rb != null)
+            {
+                rootIdentity = rb.gameObject; 
+            }
+            
+            if (rootIdentity == null) continue;
+
+            // 如果这个组合物体还没被处理过
+            if (!hitObjects.Contains(rootIdentity))
             {
                 // 1. 标记为已处理
-                hitObjects.Add(target);
+                hitObjects.Add(rootIdentity);
 
-                // 2. 尝试获取接口（问它：你会对圆环有反应吗？）
-                // 注意：这里查找的是接口，不是具体的类
-                IRingInteractable interactable = target.GetComponent<IRingInteractable>();
+                // 2. 尝试获取该具体碰撞节点上的 **所有** 接口（比如一个节点同时挂了阻碍和推动）
+                IRingInteractable[] interactables = target.GetComponents<IRingInteractable>();
                 
-                if (interactable != null)
+                foreach (var interactable in interactables)
                 {
                     // 3. 触发它的反应
-                    if (interactable != null)
-                    {
-                        interactable.OnRingHit(this); 
-        
-                        // 如果圆环已经被某个护盾销毁了，就没必要继续检测后面的物体了
-                        if (this == null) return; 
-                    }
+                    interactable.OnRingHit(this); 
+    
+                    // 如果圆环已经被某个护盾（阻碍器）销毁了，就没必要继续检测其他的了
+                    if (this == null || isDissipated) return; 
                 }
             }
         }
