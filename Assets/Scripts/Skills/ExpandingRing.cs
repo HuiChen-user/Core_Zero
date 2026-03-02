@@ -18,8 +18,15 @@ public class ExpandingRing : MonoBehaviour
     [Tooltip("物体标签Layer")]
     public LayerMask targetLayer;
     
+    [Header("Visuals")]
+    [Tooltip("圆环初始颜色")]
+    public Color normalColor = Color.white;
+    [Tooltip("扩波后的圆环颜色")]
+    public Color amplifiedColor = Color.yellow;
+
     private LineRenderer lineRenderer;
     private float currentRadius = 0f;
+    private bool isAmplified = false;
 
     // 关键点：防止同一个物体每一帧都被触发一次
     private HashSet<GameObject> hitObjects = new HashSet<GameObject>();
@@ -32,6 +39,28 @@ public class ExpandingRing : MonoBehaviour
         lineRenderer.positionCount = segments + 1; // +1 是为了闭合圆环
         lineRenderer.useWorldSpace = false; // 使用本地坐标，跟随物体移动
         lineRenderer.loop = true;
+        
+        // 初始化颜色
+        UpdateRingColor(normalColor);
+    }
+    
+    private void UpdateRingColor(Color c)
+    {
+        if (lineRenderer == null) lineRenderer = GetComponent<LineRenderer>();
+        if (lineRenderer.material == null) return;
+        lineRenderer.startColor = c;
+        lineRenderer.endColor = c;
+        lineRenderer.material.color = c;
+    }
+
+    /// <summary>
+    /// 初始化圆环的属性（用于其他物体生成新波时的定制）
+    /// </summary>
+    public void InitializeRing(float newSpeed, float newRadius, Color newColor)
+    {
+        expansionSpeed = newSpeed;
+        maxRadius = newRadius;
+        UpdateRingColor(newColor);
     }
 
     void Update()
@@ -121,5 +150,29 @@ public class ExpandingRing : MonoBehaviour
 
             lineRenderer.SetPosition(i, new Vector3(x, 0, z));
         }
+    }
+
+    /// <summary>
+    /// 被扩波器放大
+    /// </summary>
+    public void Amplify(float speedMultiplier, float maxRadiusMultiplier)
+    {
+        if (isAmplified) return; // 防止被同一个/多个扩波器重复放大太多次
+        isAmplified = true;
+
+        expansionSpeed *= speedMultiplier;
+        maxRadius *= maxRadiusMultiplier;
+        
+        // 视觉上表现出速度和范围被增强（换色）
+        UpdateRingColor(amplifiedColor);
+        
+        Debug.Log($"圆环被扩波器增强！当前速度: {expansionSpeed}, 最大半径: {maxRadius}");
+    }
+
+    private void OnDrawGizmos()
+    {
+        // 可视化：在编辑器的Scene视图中画出这个波的最大传播范围
+        Gizmos.color = isAmplified ? new Color(1f, 0.9f, 0f, 0.5f) : new Color(0f, 1f, 1f, 0.3f);
+        Gizmos.DrawWireSphere(transform.position, maxRadius);
     }
 }
