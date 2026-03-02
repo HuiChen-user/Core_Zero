@@ -15,6 +15,14 @@ public class AnchorStone : MonoBehaviour
     [Tooltip("Color of the ring when inactive.")]
     public Color inactiveColor = Color.gray;
 
+    [Header("Fixed Position")]
+    [Tooltip("The specific fixed position to anchor the player to.")]
+    public Transform targetFixedPosition;
+    [Tooltip("Visual radius for the fixed position area in the Scene view.")]
+    public float fixedPositionVisualRadius = 0.5f;
+    [Tooltip("Color of the fixed position area in the Scene view.")]
+    public Color fixedPositionAreaColor = new Color(1f, 1f, 0f, 0.4f);
+
     [Header("Visuals")]
     public int ringSegments = 50;
 
@@ -54,6 +62,14 @@ public class AnchorStone : MonoBehaviour
             {
                 StartAnchoring();
             }
+            else if (targetFixedPosition != null)
+            {
+                // 持有F键期间持续保持在固定位置
+                CharacterController cc = _playerInside.GetComponent<CharacterController>();
+                if (cc != null) cc.enabled = false;
+                _playerInside.transform.position = targetFixedPosition.position;
+                if (cc != null) cc.enabled = true;
+            }
         }
         else
         {
@@ -68,6 +84,18 @@ public class AnchorStone : MonoBehaviour
     {
         _isAnchoring = true;
         _playerInside.IsAnchored = true;
+        
+        if (targetFixedPosition != null)
+        {
+            // 在修改Transform.position前需要暂时关闭CharacterController
+            CharacterController cc = _playerInside.GetComponent<CharacterController>();
+            if (cc != null) cc.enabled = false;
+            
+            _playerInside.transform.position = targetFixedPosition.position;
+            
+            if (cc != null) cc.enabled = true;
+        }
+
         UpdateRingVisuals(true);
         Debug.Log("Player Anchored!");
     }
@@ -131,5 +159,15 @@ public class AnchorStone : MonoBehaviour
         // Update collider radius in editor when changing radius
         if (_collider == null) _collider = GetComponent<SphereCollider>();
         if (_collider != null) _collider.radius = radius;
+    }
+
+    private void OnDrawGizmos()
+    {
+        // 可视化目标固定位置的大致区域
+        if (targetFixedPosition != null)
+        {
+            Gizmos.color = fixedPositionAreaColor;
+            Gizmos.DrawSphere(targetFixedPosition.position, fixedPositionVisualRadius);
+        }
     }
 }
