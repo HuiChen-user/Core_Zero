@@ -51,5 +51,6 @@ public class BreakableObject : MonoBehaviour, IRingInteractable
 
         // 5. 销毁完整的本体
         Destroy(gameObject);
+		Debug.Log("物体被圆环击中，破碎了！");
     }
 }

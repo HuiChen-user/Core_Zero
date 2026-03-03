@@ -41,8 +41,14 @@ public class DirectionalFallingPillar : MonoBehaviour, IRingInteractable
         _rb.mass = mass;
         _rb.drag = drag;
         _rb.angularDrag = angularDrag;
-        _rb.isKinematic = true; // Start frozen
+        
+        // 关键修复：绝对不能对挂载了 Joint 的物体使用 isKinematic = true 锁死状态，
+        // 否则在解除 isKinematic 的瞬间，底层的物理运算引擎极易跟 Transform 发生错位，导致模型和碰撞盒脱离撕裂。
+        _rb.isKinematic = false; 
         _rb.useGravity = true;
+        
+        // 使用约束彻底冻结它来代替 isKinematic
+        _rb.constraints = RigidbodyConstraints.FreezeAll; 
     }
 
     private void SetupHingeJoint()
@@ -105,8 +111,8 @@ public class DirectionalFallingPillar : MonoBehaviour, IRingInteractable
     {
         _hasFallen = true;
 
-        // Unfreeze
-        _rb.isKinematic = false;
+        // Unfreeze：解除所有的位置和旋转锁定，让 HingeJoint 和受力接管
+        _rb.constraints = RigidbodyConstraints.None;
         _rb.WakeUp();
 
         // Push

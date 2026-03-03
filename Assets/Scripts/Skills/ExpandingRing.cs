@@ -92,7 +92,8 @@ public class ExpandingRing : MonoBehaviour
 
         var sortedHits = hits
             .Where(h => h != null)
-            .OrderBy(h => Vector3.Distance(transform.position, h.ClosestPoint(transform.position)))
+            // 修复1：改用 ClosestPointOnBounds 替代 ClosestPoint，完美兼容 MeshCollider 从而避免报错中断
+            .OrderBy(h => Vector3.Distance(transform.position, h.ClosestPointOnBounds(transform.position)))
             .ToArray();
         
         foreach (var hit in sortedHits)
@@ -122,8 +123,9 @@ public class ExpandingRing : MonoBehaviour
                 // 1. 标记为已处理
                 hitObjects.Add(rootIdentity);
 
-                // 2. 尝试获取该具体碰撞节点上的 **所有** 接口（比如一个节点同时挂了阻碍和推动）
-                IRingInteractable[] interactables = target.GetComponents<IRingInteractable>();
+                // 修复2：在获取交互接口时，直接从确定的唯一根节点（包含及其所有子节点）上拿所有接口
+                // 防止波只撞到子Collider而那个Collider又没挂代码的情况
+                IRingInteractable[] interactables = rootIdentity.GetComponentsInChildren<IRingInteractable>();
                 
                 foreach (var interactable in interactables)
                 {

@@ -155,3 +155,5 @@ MonoBehaviour:
   targetLayer:
     serializedVersion: 2
     m_Bits: 4294967295
+  normalColor: {r: 0.509434, g: 0.32190648, b: 0.1906372, a: 1}
+  amplifiedColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
