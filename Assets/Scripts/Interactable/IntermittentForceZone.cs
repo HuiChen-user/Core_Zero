@@ -29,6 +29,20 @@ public class IntermittentForceZone : MonoBehaviour
     [Tooltip("Starting delay before the first force application.")]
     public float startDelay = 0.5f;
 
+    [Header("Warning Settings")]
+    [Tooltip("Time before force application to trigger the warning event (seconds).")]
+    public float warningTime = 0.5f;
+
+    [Tooltip("Event triggered when the warning time is reached before a force wave.")]
+    public UnityEngine.Events.UnityEvent OnWarning;
+    
+    [Tooltip("Event triggered exactly when the force is applied (for resetting visuals).")]
+    public UnityEngine.Events.UnityEvent OnForceApplied;
+
+    [Tooltip("Optional particle system to play when warning starts.")]
+    public ParticleSystem warningEffect;
+
+
     [Header("Visualization")]
     public Color gizmoColor = new Color(1f, 0f, 0f, 0.3f);
     public float arrowLength = 2.0f;
@@ -40,6 +54,8 @@ public class IntermittentForceZone : MonoBehaviour
     private int _currentRepeatCount = 0;
     private bool _isPlayerInside;
     private ThirdPersonController _targetController;
+    private bool _hasTriggeredWarning = false;
+    private bool _isRunning = false;
 
     private void Start()
     {
@@ -61,10 +77,16 @@ public class IntermittentForceZone : MonoBehaviour
             if (_targetController != null)
             {
                 _isPlayerInside = true;
-                // Reset state on entry
-                _timer = startDelay; 
-                _currentWaveIndex = 0;
-                _currentRepeatCount = 0;
+                
+                // Only start the cycle on the very first entry
+                if (!_isRunning)
+                {
+                    _isRunning = true;
+                    _timer = startDelay; 
+                    _currentWaveIndex = 0;
+                    _currentRepeatCount = 0;
+                    _hasTriggeredWarning = false;
+                }
             }
         }
     }
@@ -80,9 +102,16 @@ public class IntermittentForceZone : MonoBehaviour
 
     private void Update()
     {
-        if (!_isPlayerInside || _targetController == null || wavePattern.Count == 0) return;
+        // 只要启动了，就一直跑下去（无论玩家是否在内）
+        if (!_isRunning || wavePattern.Count == 0) return;
 
         _timer -= Time.deltaTime;
+
+        // Trigger warning if within the warning time window
+        if (_timer <= warningTime && !_hasTriggeredWarning)
+        {
+            TriggerWarning();
+        }
 
         if (_timer <= 0f)
         {
@@ -90,12 +119,42 @@ public class IntermittentForceZone : MonoBehaviour
         }
     }
 
+    private void TriggerWarning()
+    {
+        _hasTriggeredWarning = true;
+        
+        // Trigger generic particle, if assigned
+        if (warningEffect != null)
+        {
+            warningEffect.Play();
+        }
+        
+        // 由于区域变成了持久运行的，红屏闪烁和事件可能我们希望只在玩家在里面的时候才生效，或者对本物体的警告（颜色）始终生效
+        // 屏幕由于是全局的，最好只有当玩家确实在区域内时才闪烁
+        if (_isPlayerInside && PlayerWarningUI.Instance != null)
+        {
+            PlayerWarningUI.Instance.FlashWarning();
+        }
+        
+        // 无论玩家在不在里面都可以抛出事件（例如让平台自己变红）
+        OnWarning?.Invoke();
+    }
+
     private void ExecuteWave()
     {
         ForceWave currentWave = wavePattern[_currentWaveIndex];
 
-        // Apply Force
-        ApplyForce(currentWave.force);
+        // Reset warning state for the next wave
+        _hasTriggeredWarning = false;
+        
+        // Trigger applied event (useful to reset colors/visuals changed by warning)
+        OnForceApplied?.Invoke();
+
+        if (_isPlayerInside)
+        {
+            // Apply Force
+            ApplyForce(currentWave.force);
+        }
 
         // Update repetition logic
         _currentRepeatCount++;
@@ -156,8 +215,8 @@ public class IntermittentForceZone : MonoBehaviour
 #if UNITY_EDITOR
         if (showDebugInfo)
         {
-            string info = $"Force Zone\nStatus: {(_isPlayerInside ? "Active" : "Idle")}\n";
-            if (_isPlayerInside && wavePattern.Count > 0)
+            string info = $"Force Zone\nStatus: {(_isRunning ? "Running" : "Idle")}\nPlayer: {(_isPlayerInside ? "Inside" : "Outside")}\n";
+            if (_isRunning && wavePattern.Count > 0)
             {
                 info += $"Wave: {_currentWaveIndex + 1}/{wavePattern.Count}\n";
                 info += $"Repeat: {_currentRepeatCount + 1}/{wavePattern[_currentWaveIndex].repeatCount}\n";
