@@ -107,8 +107,10 @@ public class ExpandingRing : MonoBehaviour
 
             GameObject target = hit.gameObject;
 
-            // 关键修改：用根节点（或带刚体的父节点）作为唯一身份标识
-            GameObject rootIdentity = target.transform.root.gameObject;
+            // 关键修改：不要使用 transform.root，因为如果场景里把所有物体都放在一个 "Environment" 空物体下，
+            // 就会导致一碰全碎（它会获取整个场景环境下的所有可破坏物体！）。
+            // 默认情况下，自身就是唯一标识，如果它有带刚体的父节点，就以那个父节点为准。
+            GameObject rootIdentity = target;
             Rigidbody rb = target.GetComponentInParent<Rigidbody>();
             if (rb != null)
             {
