@@ -28,8 +28,8 @@ public class ExpandingRing : MonoBehaviour
     private float currentRadius = 0f;
     private bool isAmplified = false;
 
-    // 关键点：防止同一个物体每一帧都被触发一次
-    private HashSet<GameObject> hitObjects = new HashSet<GameObject>();
+    // 关键点：防止一个包含多个组件的组合物体被重复多次触发不同部位
+    private HashSet<GameObject> hitRoots = new HashSet<GameObject>();
     
     // 标记圆环是否已经消散
     private bool isDissipated = false;
@@ -107,9 +107,7 @@ public class ExpandingRing : MonoBehaviour
 
             GameObject target = hit.gameObject;
 
-            // 关键修改：不要使用 transform.root，因为如果场景里把所有物体都放在一个 "Environment" 空物体下，
-            // 就会导致一碰全碎（它会获取整个场景环境下的所有可破坏物体！）。
-            // 默认情况下，自身就是唯一标识，如果它有带刚体的父节点，就以那个父节点为准。
+            // 1. 获取这个部位所属的真正整体（通常是带刚体的父节点）
             GameObject rootIdentity = target;
             Rigidbody rb = target.GetComponentInParent<Rigidbody>();
             if (rb != null)
@@ -117,26 +115,24 @@ public class ExpandingRing : MonoBehaviour
                 rootIdentity = rb.gameObject; 
             }
             
-            if (rootIdentity == null) continue;
+            // 2. 如果这个整体（组合物体）已经和波发生过互动并执行了某个功能，
+            // 直接无视它身上任何其他部位的后续碰撞（实现同一波对同一组合物体触发互斥）
+            if (hitRoots.Contains(rootIdentity)) continue;
 
-            // 如果这个组合物体还没被处理过
-            if (!hitObjects.Contains(rootIdentity))
+            // 3. 获取受击部位自身的逻辑及直系父辈逻辑
+            IRingInteractable[] interactables = target.GetComponentsInParent<IRingInteractable>();
+            
+            if (interactables.Length > 0)
             {
-                // 1. 标记为已处理
-                hitObjects.Add(rootIdentity);
+                // 标记这个整体已经完成了一次合法互动，拉黑它后续的所有零件检测
+                hitRoots.Add(rootIdentity);
 
-                // 修复2：在获取交互接口时，直接从确定的唯一根节点（包含及其所有子节点）上拿所有接口
-                // 防止波只撞到子Collider而那个Collider又没挂代码的情况
-                IRingInteractable[] interactables = rootIdentity.GetComponentsInChildren<IRingInteractable>();
-                
-                foreach (var interactable in interactables)
-                {
-                    // 3. 触发它的反应
-                    interactable.OnRingHit(this); 
-    
-                    // 如果圆环已经被某个护盾（阻碍器）销毁了，就没必要继续检测其他的了
-                    if (this == null || isDissipated) return; 
-                }
+                // 4. 重中之重：只执行“首当其冲”的最先接触部位的第一个逻辑
+                // GetComponentsInParent 返回顺序是 [自身组件, 父级组件, ...]
+                interactables[0].OnRingHit(this); 
+
+                // 如果圆环已经被护盾/障碍物吸收消散，停止后续波群扩展
+                if (this == null || isDissipated) return; 
             }
         }
     }
