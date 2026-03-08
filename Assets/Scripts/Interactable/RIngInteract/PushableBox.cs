@@ -13,6 +13,18 @@ public class PushableBox : MonoBehaviour, IRingInteractable // 注意这里继�
 
         Vector3 ringCenter = ring.transform.position;
         
+        // 新增检测：检测波的中心（通常是发出波的角色）是否正站在此物体上方
+        // 方法：从波的中心点向上挪一点点，然后向下打射线。如果能打中自己，说明角色踩在头上。
+        RaycastHit[] hits = Physics.RaycastAll(ringCenter + Vector3.up * 0.5f, Vector3.down, 1.5f);
+        foreach (var hit in hits)
+        {
+            if (hit.collider == col)
+            {
+                // 波的源头正在箱子正上方，忽略这次推动（防止自己脚下的东西被推走掉下去）
+                return;
+            }
+        }
+
         // 1. 找到箱子表面离圆心最近的点（这才是真正的“受力点”）
         Vector3 closestPoint = col.ClosestPoint(ringCenter);
 

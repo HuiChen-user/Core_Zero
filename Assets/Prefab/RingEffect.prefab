@@ -150,7 +150,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   expansionSpeed: 2
-  maxRadius: 3
+  maxRadius: 2
   segments: 50
   targetLayer:
     serializedVersion: 2

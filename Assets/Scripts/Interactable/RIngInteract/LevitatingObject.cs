@@ -18,13 +18,10 @@ public class LevitatingObject : MonoBehaviour, IRingInteractable
     [SerializeField] private bool isInteracting = false; // 防止重复触发
 
     private Rigidbody rb;
-    private Vector3 initialPosition;
 
     void Awake()
     {
         rb = GetComponent<Rigidbody>();
-        // 初始位置需要在 Start 或第一次触发时记录，防止物体被推开后基于错误位置上升
-        initialPosition = transform.position;
     }
 
     // 实现接口：被圆环击中
@@ -94,13 +91,8 @@ public class LevitatingObject : MonoBehaviour, IRingInteractable
     // ------------------------------------------------
     void OnDrawGizmosSelected()
     {
-        if (!Application.isPlaying) 
-        {
-            // 编辑模式下以当前位置为基准
-            initialPosition = transform.position;
-        }
-
-        Vector3 targetPos = initialPosition + Vector3.up * riseHeight;
+        Vector3 basePos = transform.position;
+        Vector3 targetPos = basePos + Vector3.up * riseHeight;
 
         // 1. 画出最高点的虚影（黄色线框）
         Gizmos.color = Color.yellow;
@@ -108,7 +100,7 @@ public class LevitatingObject : MonoBehaviour, IRingInteractable
 
         // 2. 画出上升路径（虚线）
         Gizmos.color = Color.green;
-        Gizmos.DrawLine(initialPosition, targetPos);
+        Gizmos.DrawLine(basePos, targetPos);
 
         // 3. 画出文字标签 (可选，只在Scene视图显示文字)
         // 这里的文字能帮你直观看到上升时间和速度关系
