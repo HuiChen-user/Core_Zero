@@ -15,6 +15,9 @@ public class ExpandingRing : MonoBehaviour
     [Tooltip("圆环的精细度（点越多越圆）")]
     public int segments = 50;
 
+    [Tooltip("圆环在Y轴(高度)上的可触发厚度(单面)，例如填2代表发波平面的上下各2米内有效")]
+    public float yAxisLimit = 2f;
+
     [Tooltip("物体标签Layer")]
     public LayerMask targetLayer;
     
@@ -105,6 +108,19 @@ public class ExpandingRing : MonoBehaviour
             // 尝试访问被销毁的受害者会导致引擎底层的激烈报错（甚至影响 Editor UI绘制）
             if (hit == null || hit.gameObject == null) continue;
 
+            // 新增：高度过滤
+            // 取出碰撞体表面距离波纹中心点最近的点
+            Vector3 closestPoint = hit.ClosestPointOnBounds(transform.position);
+            
+            // 计算该点与波发源地在高度上的差异绝对值
+            float heightDiff = Mathf.Abs(closestPoint.y - transform.position.y);
+            
+            // 如果超出了我们设定的 Y轴 容许厚度（即：物体太高或者太低），则无视此物体
+            if (heightDiff > yAxisLimit) 
+            {
+                continue;
+            }
+
             GameObject target = hit.gameObject;
 
             // 1. 获取这个部位所属的真正整体（通常是带刚体的父节点）
@@ -115,21 +131,32 @@ public class ExpandingRing : MonoBehaviour
                 rootIdentity = rb.gameObject; 
             }
             
+            // 新增：检查是否允许同时触发（非互斥）
+            bool bypassMutex = false;
+            CompositeLevitation levitation = target.GetComponentInParent<CompositeLevitation>();
+            if (levitation != null && levitation.allowSimultaneous)
+            {
+                bypassMutex = true;
+            }
+
             // 2. 如果这个整体（组合物体）已经和波发生过互动并执行了某个功能，
-            // 直接无视它身上任何其他部位的后续碰撞（实现同一波对同一组合物体触发互斥）
-            if (hitRoots.Contains(rootIdentity)) continue;
+            // 直接无视它身上任何其他部位的后续碰撞（除非允许非互斥同时触发）
+            if (hitRoots.Contains(rootIdentity) && !bypassMutex) continue;
 
             // 3. 获取受击部位自身的逻辑及直系父辈逻辑
             IRingInteractable[] interactables = target.GetComponentsInParent<IRingInteractable>();
             
             if (interactables.Length > 0)
             {
-                // 标记这个整体已经完成了一次合法互动，拉黑它后续的所有零件检测
-                hitRoots.Add(rootIdentity);
+                // 标记这个整体已经完成了一次合法互动，拉黑它后续的所有零件检测（除非该组件宣告它不会独占互斥）
+                if (!bypassMutex)
+                {
+                    hitRoots.Add(rootIdentity);
+                }
 
                 // 4. 重中之重：只执行“首当其冲”的最先接触部位的第一个逻辑
                 // GetComponentsInParent 返回顺序是 [自身组件, 父级组件, ...]
-                interactables[0].OnRingHit(this); 
+                interactables[0].OnRingHit(this);
 
                 // 如果圆环已经被护盾/障碍物吸收消散，停止后续波群扩展
                 if (this == null || isDissipated) return; 
@@ -171,7 +198,7 @@ public class ExpandingRing : MonoBehaviour
     /// </summary>
     public void Amplify(float speedMultiplier, float maxRadiusMultiplier)
     {
-        if (isAmplified) return; // 防止被同一个/多个扩波器重复放大太多次
+        // 允许被不同的扩波器多次叠加（已有互斥机制保证不会被同一扩波器疯狂连触发）
         isAmplified = true;
 
         expansionSpeed *= speedMultiplier;
@@ -180,7 +207,7 @@ public class ExpandingRing : MonoBehaviour
         // 视觉上表现出速度和范围被增强（换色）
         UpdateRingColor(amplifiedColor);
         
-        Debug.Log($"圆环被扩波器增强！当前速度: {expansionSpeed}, 最大半径: {maxRadius}");
+        Debug.Log($"圆环经过扩波器增强叠加！当前速度: {expansionSpeed}, 最大范围激增至: {maxRadius}");
     }
 
     private void OnDrawGizmos()

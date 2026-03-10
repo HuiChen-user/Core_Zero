@@ -152,6 +152,7 @@ MonoBehaviour:
   expansionSpeed: 2
   maxRadius: 2
   segments: 50
+  yAxisLimit: 0.5
   targetLayer:
     serializedVersion: 2
     m_Bits: 4294967295
