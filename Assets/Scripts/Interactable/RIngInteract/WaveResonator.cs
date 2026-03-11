@@ -13,6 +13,12 @@ public class WaveResonator : MonoBehaviour, IRingInteractable
     [Tooltip("新波的颜色（通过颜色深浅等可视化速度）")]
     public Color resonatedColor = Color.green;
 
+    [Header("Direction Settings")]
+    [Tooltip("是否使用自定义发波朝向（否则默认贴近地面）")]
+    public bool useCustomDirection = false;
+    [Tooltip("自定义的波传播法线方向")]
+    public Vector3 customNormal = Vector3.up;
+
     [Header("Ground Placement")]
     public LayerMask groundLayer;
     public float groundCheckDistance = 2.0f;
@@ -60,12 +66,22 @@ public class WaveResonator : MonoBehaviour, IRingInteractable
         Quaternion spawnRotation = Quaternion.identity;
         Vector3 spawnPosition = transform.position;
 
-        // 向下检测地面，确保贴合地形发射
-        RaycastHit hit;
-        if (Physics.Raycast(transform.position + Vector3.up * 0.5f, Vector3.down, out hit, groundCheckDistance, groundLayer))
+        if (useCustomDirection)
         {
-            spawnRotation = Quaternion.FromToRotation(Vector3.up, hit.normal);
-            spawnPosition = hit.point + hit.normal * 0.1f;
+            // 使用用户自定义的法线方向
+            spawnRotation = Quaternion.FromToRotation(Vector3.up, customNormal.normalized);
+            // 自定义朝向时，可以直接在中心生成，或者你可以根据需求微调位置
+            spawnPosition = transform.position; 
+        }
+        else
+        {
+            // 向下检测地面，确保贴合地形发射
+            RaycastHit hit;
+            if (Physics.Raycast(transform.position + Vector3.up * 0.5f, Vector3.down, out hit, groundCheckDistance, groundLayer))
+            {
+                spawnRotation = Quaternion.FromToRotation(Vector3.up, hit.normal);
+                spawnPosition = hit.point + hit.normal * 0.1f;
+            }
         }
 
         GameObject newRingObj = Instantiate(ringPrefab, spawnPosition, spawnRotation);
@@ -87,5 +103,34 @@ public class WaveResonator : MonoBehaviour, IRingInteractable
         
         // 画一个中心方块，颜色也相同，暗示共鸣源
         Gizmos.DrawCube(transform.position, Vector3.one * 0.8f);
+
+        // --- 画出波传播平面的法线指示（朝向） ---
+        Vector3 normalDirection = Vector3.up;
+        Vector3 startPoint = transform.position;
+
+        if (useCustomDirection)
+        {
+            normalDirection = customNormal.normalized;
+        }
+        else
+        {
+            // 尝试模拟原本的地面检测朝向
+            if (Physics.Raycast(transform.position + Vector3.up * 0.5f, Vector3.down, out RaycastHit hit, groundCheckDistance, groundLayer))
+            {
+                normalDirection = hit.normal;
+                startPoint = hit.point;
+            }
+        }
+
+        // 用一条醒目的红线表示法线（根据你的最大范围决定线长，或者固定2米）
+        float lineLength = Mathf.Clamp(resonatedMaxRadius * 0.5f, 1f, 5f);
+        Vector3 endPoint = startPoint + normalDirection * lineLength;
+
+        // 画直线
+        Gizmos.color = Color.red;
+        Gizmos.DrawLine(startPoint, endPoint);
+        
+        // 在线段末端画个小球充当“箭头”顶端
+        Gizmos.DrawSphere(endPoint, 0.2f);
     }
 }

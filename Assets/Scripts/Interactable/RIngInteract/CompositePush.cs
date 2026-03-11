@@ -10,6 +10,9 @@ public class CompositePush : MonoBehaviour, IRingInteractable
     [Tooltip("推动力度")]
     public float pushForce = 10f;
 
+    [Tooltip("是否允许被波命中时多部件同时触发（非互斥）")]
+    public bool allowSimultaneous = false;
+
     public void OnRingHit(ExpandingRing ring)
     {
         if (targetRigidbody == null)

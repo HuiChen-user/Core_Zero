@@ -108,15 +108,21 @@ public class ExpandingRing : MonoBehaviour
             // 尝试访问被销毁的受害者会导致引擎底层的激烈报错（甚至影响 Editor UI绘制）
             if (hit == null || hit.gameObject == null) continue;
 
-            // 新增：高度过滤
+            // 新增：高度过滤 (重构为支持任意朝向发波)
             // 取出碰撞体表面距离波纹中心点最近的点
             Vector3 closestPoint = hit.ClosestPointOnBounds(transform.position);
             
-            // 计算该点与波发源地在高度上的差异绝对值
-            float heightDiff = Mathf.Abs(closestPoint.y - transform.position.y);
+            // 获知当前这股波浪的平面法线（因为我们允许WaveResonator改变它的transform.rotation）
+            Vector3 waveNormal = transform.up;
             
-            // 如果超出了我们设定的 Y轴 容许厚度（即：物体太高或者太低），则无视此物体
-            if (heightDiff > yAxisLimit) 
+            // 计算从波中心到该最近点的向量
+            Vector3 vectorToPoint = closestPoint - transform.position;
+            
+            // 计算这个向量在波传播平面法线上的投影距离绝对值（即：物体真实距离当前波平面的“厚度”差）
+            float thicknessDiff = Mathf.Abs(Vector3.Dot(vectorToPoint, waveNormal));
+            
+            // 如果超出了我们设定的容许厚度（即：物体太高或者太低），则无视此物体
+            if (thicknessDiff > yAxisLimit) 
             {
                 continue;
             }
@@ -133,8 +139,15 @@ public class ExpandingRing : MonoBehaviour
             
             // 新增：检查是否允许同时触发（非互斥）
             bool bypassMutex = false;
+            
             CompositeLevitation levitation = target.GetComponentInParent<CompositeLevitation>();
             if (levitation != null && levitation.allowSimultaneous)
+            {
+                bypassMutex = true;
+            }
+
+            CompositePush pushComp = target.GetComponentInParent<CompositePush>();
+            if (pushComp != null && pushComp.allowSimultaneous)
             {
                 bypassMutex = true;
             }
