@@ -71,14 +71,16 @@ public class DirectionalFlippingBoard : MonoBehaviour, IRingInteractable
     private Vector3 GetCalculatedEdgePivot()
     {
         Collider col = GetComponent<Collider>();
-        Vector3 worldCenter = col.bounds.center;
-        Vector3 worldHitDir = transform.TransformDirection(hitDirection).normalized;
-        
-        // 粗略计算：底部 + 顺着受力方向的边缘
-        // 注意：这里的 extents.z 只是用于近似，如果物体发生旋转，这个计算是不准确的。
-        // 这就是为什么强烈建议你在面板里新建一个空物体作为 PivotPoint 并赋值给它。
-        float maxExtent = Mathf.Max(col.bounds.extents.x, col.bounds.extents.z);
-        return worldCenter - new Vector3(0, col.bounds.extents.y, 0) + worldHitDir * maxExtent;
+        if (col != null)
+        {
+            Vector3 worldCenter = col.bounds.center;
+            Vector3 worldHitDir = transform.TransformDirection(hitDirection).normalized;
+            
+            // 粗略计算：底部 + 顺着受力方向的边缘
+            float maxExtent = Mathf.Max(col.bounds.extents.x, col.bounds.extents.z);
+            return worldCenter - new Vector3(0, col.bounds.extents.y, 0) + worldHitDir * maxExtent;
+        }
+        return transform.position;
     }
 
     public void OnRingHit(ExpandingRing ring)
@@ -100,21 +102,11 @@ public class DirectionalFlippingBoard : MonoBehaviour, IRingInteractable
 
         // 核心修复：木板感受到的“推力方向”必须和它“设定的受打方向”【同向】（即夹角接近0），
         // 才能被顺着推翻过去。
-        // （如果在Inspector设定是Vector3.forward，意味着波浪必须从它的背后推向前）
         float angle = Vector3.Angle(pushDir, myHitDirWorld);
         
-        /*Debug.Log($" -> 推出来的方向 (推力): {pushDir}");
-        Debug.Log($" -> 木板设定的受击方向: {myHitDirWorld}");
-        Debug.Log($" -> 两者真实夹角: {angle} 度");*/
-
         if (angle <= hitToleranceAngle)
         {
-            //Debug.Log(" -> 夹角在容错范围内，准备触发翻转！");
             TriggerFlip();
-        }
-        else
-        {
-            //Debug.Log(" -> 夹角**大于**容错范围，翻转判定失败！");
         }
     }
 
@@ -137,9 +129,22 @@ public class DirectionalFlippingBoard : MonoBehaviour, IRingInteractable
         Debug.Log("11");
     }
 
+#if UNITY_EDITOR
     private void OnDrawGizmos()
     {
-        Vector3 pPos = pivotPoint != null ? pivotPoint.position : (GetComponent<Collider>() ? GetCalculatedEdgePivot() : transform.position);
+        Vector3 pPos = transform.position;
+        if (pivotPoint != null)
+        {
+            pPos = pivotPoint.position;
+        }
+        else
+        {
+            Collider col = GetComponent<Collider>();
+            if (col != null)
+            {
+                pPos = GetCalculatedEdgePivot();
+            }
+        }
         
         // 黄色球体表示旋转轴 (Pivot)
         Gizmos.color = Color.yellow;
@@ -147,12 +152,16 @@ public class DirectionalFlippingBoard : MonoBehaviour, IRingInteractable
 
         // 青色表示受击方向 (即波浪应该从哪个方向推过来)
         Vector3 dir = transform.TransformDirection(hitDirection).normalized;
-        Gizmos.color = Color.cyan;
-        Gizmos.DrawLine(pPos, pPos - dir * 2f); // 反向画线，表示力的来源方向
-        
-        // 红色表示铰链旋转轴
-        Vector3 axis = transform.TransformDirection(Vector3.Cross(Vector3.up, hitDirection).normalized);
-        Gizmos.color = Color.red;
-        Gizmos.DrawLine(pPos - axis, pPos + axis);
+        if (dir != Vector3.zero)
+        {
+            Gizmos.color = Color.cyan;
+            Gizmos.DrawLine(pPos, pPos - dir * 2f); // 反向画线，表示力的来源方向
+            
+            // 红色表示铰链旋转轴
+            Vector3 axis = transform.TransformDirection(Vector3.Cross(Vector3.up, hitDirection).normalized);
+            Gizmos.color = Color.red;
+            Gizmos.DrawLine(pPos - axis, pPos + axis);
+        }
     }
+#endif
 }

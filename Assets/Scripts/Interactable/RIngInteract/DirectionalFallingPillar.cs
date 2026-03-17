@@ -84,7 +84,11 @@ public class DirectionalFallingPillar : MonoBehaviour, IRingInteractable
     private Vector3 GetBottomCenter()
     {
         Collider col = GetComponent<Collider>();
-        return col.bounds.center - new Vector3(0, col.bounds.extents.y, 0);
+        if (col != null)
+        {
+            return col.bounds.center - new Vector3(0, col.bounds.extents.y, 0);
+        }
+        return transform.position;
     }
 
     public void OnRingHit(ExpandingRing ring)
@@ -118,26 +122,48 @@ public class DirectionalFallingPillar : MonoBehaviour, IRingInteractable
         // Push
         // Apply trigger force at the top center
         Collider col = GetComponent<Collider>();
-        Vector3 pushPoint = col.bounds.center + new Vector3(0, col.bounds.extents.y * 0.8f, 0);
+        Vector3 pushPoint = transform.position;
+        if (col != null)
+        {
+             pushPoint = col.bounds.center + new Vector3(0, col.bounds.extents.y * 0.8f, 0);
+        }
         
         _rb.AddForceAtPosition(pushDir * pushForce, pushPoint, ForceMode.Impulse);
     }
 
+#if UNITY_EDITOR
     private void OnDrawGizmos()
     {
         // Visualize Pivot
-        Vector3 pPos = pivotPoint != null ? pivotPoint.position : (GetComponent<Collider>() ? GetBottomCenter() : transform.position);
+        Vector3 pPos = transform.position;
+        if (pivotPoint != null)
+        {
+            pPos = pivotPoint.position;
+        }
+        else
+        {
+            Collider col = GetComponent<Collider>();
+            if (col != null)
+            {
+                pPos = GetBottomCenter();
+            }
+        }
+
         Gizmos.color = Color.yellow;
         Gizmos.DrawWireSphere(pPos, 0.2f);
 
         // Visualize Fall Direction
         Vector3 dir = transform.TransformDirection(allowedFallDirection).normalized;
-        Gizmos.color = Color.cyan;
-        Gizmos.DrawLine(pPos, pPos + dir * 3f);
-        
-        // Visualize Axis
-        Vector3 axis = transform.TransformDirection(Vector3.Cross(Vector3.up, allowedFallDirection).normalized);
-        Gizmos.color = Color.red;
-        Gizmos.DrawLine(pPos - axis, pPos + axis);
+        if (dir != Vector3.zero)
+        {
+            Gizmos.color = Color.cyan;
+            Gizmos.DrawLine(pPos, pPos + dir * 3f);
+            
+            // Visualize Axis
+            Vector3 axis = transform.TransformDirection(Vector3.Cross(Vector3.up, allowedFallDirection).normalized);
+            Gizmos.color = Color.red;
+            Gizmos.DrawLine(pPos - axis, pPos + axis);
+        }
     }
+#endif
 }

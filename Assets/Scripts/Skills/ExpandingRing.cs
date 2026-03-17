@@ -129,50 +129,85 @@ public class ExpandingRing : MonoBehaviour
 
             GameObject target = hit.gameObject;
 
-            // 1. 获取这个部位所属的真正整体（通常是带刚体的父节点）
+            // 1. 获取这个部位所属的真正整体根节点
             GameObject rootIdentity = target;
-            Rigidbody rb = target.GetComponentInParent<Rigidbody>();
-            if (rb != null)
-            {
-                rootIdentity = rb.gameObject; 
-            }
             
-            // 新增：检查是否允许同时触发（非互斥）
-            bool bypassMutex = false;
+            // 是否触发全组联动的标志
+            bool triggerAll = false;
             
+            // 为了摆脱必须依赖刚体(Rigidbody)的限制，我们直接向上查找组合配置组件（如 WaveDrivenMover）。
+            // 只要找到了组合组件，我们就使用它的 "目标整体(targetWhole/targetRigidbody)" 作为真正的根节点。
+            // 如果没填，为了确保同父级下的兄弟节点能被一起找到，我们会退而求其次试着拿它的父节点作为根。
             CompositeLevitation levitation = target.GetComponentInParent<CompositeLevitation>();
-            if (levitation != null && levitation.allowSimultaneous)
+            if (levitation != null)
             {
-                bypassMutex = true;
+                rootIdentity = levitation.targetWhole != null ? levitation.targetWhole.gameObject : (levitation.transform.parent != null ? levitation.transform.parent.gameObject : levitation.gameObject);
+                if(levitation.allowSimultaneous) triggerAll = true;
             }
 
             CompositePush pushComp = target.GetComponentInParent<CompositePush>();
-            if (pushComp != null && pushComp.allowSimultaneous)
+            if (pushComp != null)
             {
-                bypassMutex = true;
+                rootIdentity = pushComp.targetRigidbody != null ? pushComp.targetRigidbody.gameObject : (pushComp.transform.parent != null ? pushComp.transform.parent.gameObject : pushComp.gameObject);
+                if(pushComp.allowSimultaneous) triggerAll = true;
             }
 
-            // 2. 如果这个整体（组合物体）已经和波发生过互动并执行了某个功能，
-            // 直接无视它身上任何其他部位的后续碰撞（除非允许非互斥同时触发）
-            if (hitRoots.Contains(rootIdentity) && !bypassMutex) continue;
-
-            // 3. 获取受击部位自身的逻辑及直系父辈逻辑
-            IRingInteractable[] interactables = target.GetComponentsInParent<IRingInteractable>();
-            
-            if (interactables.Length > 0)
+            WaveDrivenMover waveMover = target.GetComponentInParent<WaveDrivenMover>();
+            if (waveMover != null)
             {
-                // 标记这个整体已经完成了一次合法互动，拉黑它后续的所有零件检测（除非该组件宣告它不会独占互斥）
-                if (!bypassMutex)
+                rootIdentity = waveMover.targetWhole != null ? waveMover.targetWhole.gameObject : (waveMover.transform.parent != null ? waveMover.transform.parent.gameObject : waveMover.gameObject);
+                if(waveMover.allowSimultaneous) triggerAll = true;
+            }
+            
+            // 如果上述三种特定的组合脚本都没有找到，此时才去回退查找刚体作为根节点的常规操作
+            if (rootIdentity == target)
+            {
+                Rigidbody rb = target.GetComponentInParent<Rigidbody>();
+                if (rb != null)
                 {
-                    hitRoots.Add(rootIdentity);
+                    rootIdentity = rb.gameObject; 
                 }
+            }
 
-                // 4. 重中之重：只执行“首当其冲”的最先接触部位的第一个逻辑
-                // GetComponentsInParent 返回顺序是 [自身组件, 父级组件, ...]
-                interactables[0].OnRingHit(this);
+            // 2. 如果这个组合（根节点）已经和波发生过互动，
+            // 无论是独立触发了一次还是全组触发了一次，都直接拉黑后续波对于该组合的其他部位碰撞
+            if (hitRoots.Contains(rootIdentity)) continue;
 
-                // 如果圆环已经被护盾/障碍物吸收消散，停止后续波群扩展
-                if (this == null || isDissipated) return; 
+            if (triggerAll)
+            {
+                // 全组触发模式：找出组合体下所有的交互组件
+                IRingInteractable[] allInteractables = rootIdentity.GetComponentsInChildren<IRingInteractable>();
+                
+                if (allInteractables.Length > 0)
+                {
+                    // 标记这个整体已经完成了一次合法互动，拉黑它后续的所有零件检测保证只触发一次
+                    hitRoots.Add(rootIdentity);
+
+                    foreach (var interactable in allInteractables)
+                    {
+                        interactable.OnRingHit(this);
+
+                        // 如果某个组件（如护盾）把波吸收消散了，就停止后续互动
+                        if (this == null || isDissipated) return;
+                    }
+                }
+            }
+            else
+            {
+                // 3. 独立触发模式：仅获取受击部位自身及直系父辈逻辑
+                IRingInteractable[] interactables = target.GetComponentsInParent<IRingInteractable>();
+                
+                if (interactables.Length > 0)
+                {
+                    // 标记这个整体已经完成了一次合法互动
+                    hitRoots.Add(rootIdentity);
+
+                    // 4. 只执行“首当其冲”的最先接触部位的第一个逻辑
+                    interactables[0].OnRingHit(this);
+
+                    // 如果圆环已经被护盾/障碍物吸收消散，停止后续波群扩展
+                    if (this == null || isDissipated) return; 
+                }
             }
         }
     }
