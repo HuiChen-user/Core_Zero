@@ -134,6 +134,7 @@ public class ExpandingRing : MonoBehaviour
             
             // 是否触发全组联动的标志
             bool triggerAll = false;
+            IRingInteractable delayedPrimaryInteractable = null;
             
             // 为了摆脱必须依赖刚体(Rigidbody)的限制，我们直接向上查找组合配置组件（如 WaveDrivenMover）。
             // 只要找到了组合组件，我们就使用它的 "目标整体(targetWhole/targetRigidbody)" 作为真正的根节点。
@@ -142,21 +143,41 @@ public class ExpandingRing : MonoBehaviour
             if (levitation != null)
             {
                 rootIdentity = levitation.targetWhole != null ? levitation.targetWhole.gameObject : (levitation.transform.parent != null ? levitation.transform.parent.gameObject : levitation.gameObject);
-                if(levitation.allowSimultaneous) triggerAll = true;
+                if (levitation.allowSimultaneous)
+                {
+                    if (levitation.delaySimultaneous) delayedPrimaryInteractable = levitation;
+                    else triggerAll = true;
+                }
             }
 
             CompositePush pushComp = target.GetComponentInParent<CompositePush>();
             if (pushComp != null)
             {
                 rootIdentity = pushComp.targetRigidbody != null ? pushComp.targetRigidbody.gameObject : (pushComp.transform.parent != null ? pushComp.transform.parent.gameObject : pushComp.gameObject);
-                if(pushComp.allowSimultaneous) triggerAll = true;
+                if (pushComp.allowSimultaneous)
+                {
+                    triggerAll = true;
+                    delayedPrimaryInteractable = null;
+                }
             }
 
             WaveDrivenMover waveMover = target.GetComponentInParent<WaveDrivenMover>();
             if (waveMover != null)
             {
                 rootIdentity = waveMover.targetWhole != null ? waveMover.targetWhole.gameObject : (waveMover.transform.parent != null ? waveMover.transform.parent.gameObject : waveMover.gameObject);
-                if(waveMover.allowSimultaneous) triggerAll = true;
+                if (waveMover.allowSimultaneous)
+                {
+                    if (waveMover.delaySimultaneous)
+                    {
+                        delayedPrimaryInteractable = waveMover;
+                        triggerAll = false;
+                    }
+                    else
+                    {
+                        triggerAll = true;
+                        delayedPrimaryInteractable = null;
+                    }
+                }
             }
             
             // 如果上述三种特定的组合脚本都没有找到，此时才去回退查找刚体作为根节点的常规操作
@@ -191,6 +212,15 @@ public class ExpandingRing : MonoBehaviour
                         if (this == null || isDissipated) return;
                     }
                 }
+            }
+            else if (delayedPrimaryInteractable != null)
+            {
+                // 延迟联动的模式：只触发主导组件，主导组件稍后会触发其他组件
+                hitRoots.Add(rootIdentity);
+                delayedPrimaryInteractable.OnRingHit(this);
+
+                // 如果某个组件把波吸收消散了，就停止后续互动
+                if (this == null || isDissipated) return;
             }
             else
             {

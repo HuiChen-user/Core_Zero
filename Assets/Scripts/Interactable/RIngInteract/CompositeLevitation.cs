@@ -20,6 +20,9 @@ public class CompositeLevitation : MonoBehaviour, IRingInteractable
     [Tooltip("勾选后允许与其他组件同时触发。不勾选则维持同一部件的互斥性（先碰到的生效）。")]
     public bool allowSimultaneous = false;
 
+    [Tooltip("延迟同时触发：需要勾选上方选项。若勾选，同组的其他功能将在物体上升至指定高度（最高点）后才触发。")]
+    public bool delaySimultaneous = false;
+
     [Header("状态")]
     [SerializeField] private bool isInteracting = false; // 防止重复触发
 
@@ -73,6 +76,20 @@ public class CompositeLevitation : MonoBehaviour, IRingInteractable
         
         // 确保精准到达最高点
         wholeTransform.position = targetPos;
+
+        // 如果开启了延迟同时触发，则在到达最高点后触发同组其他组件
+        if (allowSimultaneous && delaySimultaneous)
+        {
+            GameObject rootIdentity = targetWhole != null ? targetWhole.gameObject : (transform.parent != null ? transform.parent.gameObject : gameObject);
+            IRingInteractable[] allInteractables = rootIdentity.GetComponentsInChildren<IRingInteractable>();
+            foreach (var interactable in allInteractables)
+            {
+                if ((MonoBehaviour)interactable != this)
+                {
+                    interactable.OnRingHit(null);
+                }
+            }
+        }
 
         // ------------------------------------------------
         // 第二阶段：悬浮 (停留)

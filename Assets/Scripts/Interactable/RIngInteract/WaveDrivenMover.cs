@@ -11,6 +11,9 @@ public class WaveDrivenMover : MonoBehaviour, IRingInteractable
     [Tooltip("勾选后允许与其他组件同时触发。不勾选则维持同一部件的互斥性（先碰到的生效）。")]
     public bool allowSimultaneous = false;
 
+    [Tooltip("延迟同时触发：需要勾选上方选项。若勾选，同组的其他功能（如开门、变色）将在此物体到达目的地后再触发。")]
+    public bool delaySimultaneous = false;
+
     [Header("位移设置")]
     [Tooltip("位移的方向和距离（局部坐标系下，基于整体对象的方向计算）")]
     public Vector3 localMoveOffset = new Vector3(0, 0, 5f);
@@ -25,6 +28,13 @@ public class WaveDrivenMover : MonoBehaviour, IRingInteractable
     [Tooltip("是否在游戏开始前允许波触发复位？(如果开启了往返模式，此选项将被忽略)")]
     public bool isOneShot = true;
     
+    [Header("防循环冷却")]
+    [Tooltip("到达目的地后，是否在一小段时间内自动取消勾选 Ping-Pong（防止被共鸣器等无限弹回）？")]
+    public bool enablePingPongCooldown = true;
+    
+    [Tooltip("取消勾选 Ping-Pong 的时长（秒）")]
+    public float pingPongCooldownDuration = 1.5f;
+
     [Tooltip("到达终点目标颜色的可视化线框")]
     public Color gizmoTargetColor = Color.green;
     [Tooltip("表示速度的路径指示线颜色")]
@@ -77,6 +87,12 @@ public class WaveDrivenMover : MonoBehaviour, IRingInteractable
         {
             // 单向模式：永远前往目标点
             currentDestination = _initialTargetPos;
+            
+            // 安全机制：如果已经到达该目标点，则直接返回，防止重复触发延迟联动的死循环
+            if (Vector3.Distance(target.position, currentDestination) < 0.01f)
+            {
+                return;
+            }
         }
 
         StopAllCoroutines();
@@ -97,6 +113,33 @@ public class WaveDrivenMover : MonoBehaviour, IRingInteractable
         
         target.position = destination; // 保证精准对齐
         _isMoving = false;
+
+        // --- 防死循环：到达目的地后短时间内取消 IsPingPong 勾选 ---
+        if (isPingPong && enablePingPongCooldown)
+        {
+            StartCoroutine(CooldownRoutine());
+        }
+
+        // 如果开启了延迟同时触发，则在到达目的地后触发同组其他组件
+        if (allowSimultaneous && delaySimultaneous)
+        {
+            GameObject rootIdentity = targetWhole != null ? targetWhole.gameObject : (transform.parent != null ? transform.parent.gameObject : gameObject);
+            IRingInteractable[] allInteractables = rootIdentity.GetComponentsInChildren<IRingInteractable>();
+            foreach (var interactable in allInteractables)
+            {
+                if ((MonoBehaviour)interactable != this)
+                {
+                    interactable.OnRingHit(null);
+                }
+            }
+        }
+    }
+
+    private IEnumerator CooldownRoutine()
+    {
+        isPingPong = false; // 暂时取消勾选
+        yield return new WaitForSeconds(pingPongCooldownDuration);
+        isPingPong = true;  // 恢复勾选
     }
 
     private void OnDrawGizmosSelected()
