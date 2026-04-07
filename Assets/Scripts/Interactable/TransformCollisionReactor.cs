@@ -44,11 +44,37 @@ namespace StarterAssets
             _startPosition = transform.position;
             _startRotation = transform.rotation;
             CreateProgressBar();
+
+            // 为 Trigger 动态注入侦听器，解决勾选 isTrigger 后无法触发的问题
+            if (requiredTriggerObject != null)
+            {
+                var listener = requiredTriggerObject.AddComponent<TransformReactorTriggerListener>();
+                listener.Init(this);
+            }
+        }
+        
+        // 由被注入的触发器或者自身的 OnTriggerEnter 调用
+        public void OnTriggeredByPlayer()
+        {
+            if (_hasTriggered) return;
+            // 注意：因为 Trigger 模式没有接触点法线，所以法线检测（useNormalDetection）在此模式下将不适用/被跳过。
+            StartCoroutine(AnimateTransform());
+        }
+
+        private void OnTriggerEnter(Collider other)
+        {
+            // 如果自己就是所需物体，或者没有指定所需物体时，才由自身响应 trigger
+            if (requiredTriggerObject != null && requiredTriggerObject != gameObject) return;
+
+            if (other.CompareTag("Player"))
+            {
+                OnTriggeredByPlayer();
+            }
         }
         
         public void OnHitByPlayer(ControllerColliderHit hit)
         {
-            // 如果已经触发过，则不再响应，保证只触发一次并停留在目标值
+            // 如果已经触发过，则不再响应
             if (_hasTriggered) return;
 
             // 1. 检查是否碰撞了指定的触发物体
@@ -60,11 +86,10 @@ namespace StarterAssets
             // 2. 检查法线方向是否符合要求
             if (useNormalDetection)
             {
-                // hit.normal 是碰撞点表面的法线方向
                 float dotProduct = Vector3.Dot(hit.normal.normalized, validHitNormal.normalized);
                 if (dotProduct < normalTolerance)
                 {
-                    return; // 角度偏差过大，不触发
+                    return; 
                 }
             }
 
@@ -199,6 +224,27 @@ namespace StarterAssets
             {
                 transform.LookAt(transform.position + _mainCamera.transform.rotation * Vector3.forward,
                     _mainCamera.transform.rotation * Vector3.up);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 内部辅助组件：自动挂载到特定的触发区物体上，用来接收 OnTriggerEnter 事件并回传至主体。
+    /// </summary>
+    public class TransformReactorTriggerListener : MonoBehaviour
+    {
+        private TransformCollisionReactor _owner;
+
+        public void Init(TransformCollisionReactor owner)
+        {
+            _owner = owner;
+        }
+
+        private void OnTriggerEnter(Collider other)
+        {
+            if (_owner != null && other.CompareTag("Player"))
+            {
+                _owner.OnTriggeredByPlayer();
             }
         }
     }
