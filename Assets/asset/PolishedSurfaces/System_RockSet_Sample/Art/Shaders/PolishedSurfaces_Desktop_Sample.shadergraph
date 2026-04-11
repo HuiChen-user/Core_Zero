@@ -6453,7 +6453,7 @@
     "m_ObjectId": "8f470d7762d4429787dafaafe4ca834f",
     "m_Title": "Mask adjustment",
     "m_Position": {
-        "x": -1050.0,
+        "x": -1050.666748046875,
         "y": 260.0
     }
 }
@@ -6746,8 +6746,8 @@
     "m_ObjectId": "954a6147ba064033a4fbb8521ad750b1",
     "m_Title": "Masks",
     "m_Position": {
-        "x": -4399.0,
-        "y": 367.99951171875
+        "x": -4399.3330078125,
+        "y": 368.0
     }
 }
 
@@ -8414,8 +8414,8 @@
     "m_ObjectId": "bdf643e96ced4324859940f0471c4b7c",
     "m_Title": "Surface variation blend",
     "m_Position": {
-        "x": -2152.0,
-        "y": -181.0000762939453
+        "x": -2152.66650390625,
+        "y": -180.66668701171876
     }
 }
 
@@ -8959,8 +8959,8 @@
     "m_ObjectId": "d27d57e0c7e249a8b375b549c092668b",
     "m_Title": "Albedo",
     "m_Position": {
-        "x": -3987.0,
-        "y": -858.00048828125
+        "x": -3987.33349609375,
+        "y": -858.0000610351563
     }
 }
 
@@ -9200,9 +9200,6 @@
     "m_AlphaClip": false,
     "m_CastShadows": true,
     "m_ReceiveShadows": true,
-    "m_DisableTint": false,
-    "m_AdditionalMotionVectorMode": 0,
-    "m_AlembicMotionVectors": false,
     "m_SupportsLODCrossFade": false,
     "m_CustomEditorGUI": "",
     "m_SupportVFX": false
@@ -9704,8 +9701,8 @@
     "m_ObjectId": "e8127d74c8b5496e9161bbbe4eda407d",
     "m_Title": "Normal",
     "m_Position": {
-        "x": -3163.0,
-        "y": 1579.0003662109375
+        "x": -3163.33349609375,
+        "y": 1579.333251953125
     }
 }
 
@@ -10048,7 +10045,7 @@
     "m_DefaultValue": {
         "x": 0.0,
         "y": 0.0,
-        "z": 1.0
+        "z": 0.0
     },
     "m_Labels": []
 }

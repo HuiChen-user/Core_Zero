@@ -216,9 +216,6 @@
     "m_AlphaClip": false,
     "m_CastShadows": true,
     "m_ReceiveShadows": true,
-    "m_DisableTint": false,
-    "m_AdditionalMotionVectorMode": 0,
-    "m_AlembicMotionVectors": false,
     "m_SupportsLODCrossFade": false,
     "m_CustomEditorGUI": "",
     "m_SupportVFX": false
@@ -605,7 +602,6 @@
     "m_SourceType": 1,
     "m_FunctionName": "Enter function name here...",
     "m_FunctionSource": "",
-    "m_FunctionSourceUsePragmas": true,
     "m_FunctionBody": "#pragma multi_compile_fog __ _FOG_DISABLED"
 }
 
