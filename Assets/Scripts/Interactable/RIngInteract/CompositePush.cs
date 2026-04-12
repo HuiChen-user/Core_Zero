@@ -13,12 +13,41 @@ public class CompositePush : MonoBehaviour, IRingInteractable
     [Tooltip("是否允许被波命中时多部件同时触发（非互斥）")]
     public bool allowSimultaneous = false;
 
+    [Header("互斥与冷却设置")]
+    [Tooltip("是否启用同组互斥冷却。勾选后，波只会触发最先被命中的物体，规定时间内同组（共用targetRigidbody）的其他物体不会被触发。")]
+    public bool enableExclusiveCooldown = false;
+
+    [Tooltip("互斥触发的绝对冷却时间（秒）")]
+    public float exclusiveCooldownTime = 2.0f;
+
     public void OnRingHit(ExpandingRing ring)
     {
         if (targetRigidbody == null)
         {
             Debug.LogWarning(gameObject.name + " 的 CompositePush 未分配 targetRigidbody！");
             return;
+        }
+
+        // 互斥冷却检查
+        if (enableExclusiveCooldown)
+        {
+            CompositePushCooldown cooldownTracker = targetRigidbody.GetComponent<CompositePushCooldown>();
+            if (cooldownTracker == null)
+            {
+                cooldownTracker = targetRigidbody.gameObject.AddComponent<CompositePushCooldown>();
+                // 不在 Inspector 中显示该临时组件
+                cooldownTracker.hideFlags = HideFlags.HideInInspector;
+            }
+
+            if (Time.time < cooldownTracker.lastTriggerTime + exclusiveCooldownTime)
+            {
+                // 还在规定时间内，绝对不会触发
+                Debug.Log($"{gameObject.name} 处于组合冷却时间内，拒绝触发。");
+                return;
+            }
+
+            // 更新触发时间
+            cooldownTracker.lastTriggerTime = Time.time;
         }
 
         Collider col = GetComponent<Collider>();
@@ -50,4 +79,43 @@ public class CompositePush : MonoBehaviour, IRingInteractable
         Debug.DrawLine(flatRingPos, flatHitPoint, Color.red, 2f);
         Debug.Log(gameObject.name + " 受到波的冲击，推动了整个组合物体！");
     }
+
+#if UNITY_EDITOR
+    private void OnDrawGizmos()
+    {
+        if (!enableExclusiveCooldown || targetRigidbody == null) return;
+
+        bool inCooldown = false;
+        float remainingTime = 0f;
+
+        if (Application.isPlaying)
+        {
+            CompositePushCooldown tracker = targetRigidbody.GetComponent<CompositePushCooldown>();
+            if (tracker != null)
+            {
+                remainingTime = (tracker.lastTriggerTime + exclusiveCooldownTime) - Time.time;
+                if (remainingTime > 0) inCooldown = true;
+            }
+        }
+
+        // 可视化：若处于冷却中，绘制红色球体警告；否则绘制绿色，表示准备就绪
+        Gizmos.color = inCooldown ? new Color(1f, 0f, 0f, 0.5f) : new Color(0f, 1f, 0f, 0.3f);
+        Vector3 pos = transform.position + Vector3.up * 1f; // 在物体上方一点显示
+        Gizmos.DrawSphere(pos, 0.3f);
+
+        // 如果在运行状态且处于冷却中，可以通过 GUI Label 渲染剩余时间
+        if (inCooldown)
+        {
+            UnityEditor.Handles.Label(pos + Vector3.up * 0.5f, $"冷却中: {remainingTime:F1}s");
+        }
+    }
+#endif
+}
+
+/// <summary>
+/// 内部用于追踪共享 Rigidbody 的冷却时间的小组件
+/// </summary>
+public class CompositePushCooldown : MonoBehaviour
+{
+    public float lastTriggerTime = -1000f; // 初始赋负值以确保第一次必定触发
 }
