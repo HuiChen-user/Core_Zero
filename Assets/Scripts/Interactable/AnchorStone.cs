@@ -31,8 +31,43 @@ public class AnchorStone : MonoBehaviour
     private ThirdPersonController _playerInside;
     private bool _isAnchoring = false;
 
+    private Transform GetValidTarget()
+    {
+        // 优先检查已分配的目标是否合法（必须是自己的子物体）
+        if (targetFixedPosition != null && targetFixedPosition.IsChildOf(transform))
+        {
+            return targetFixedPosition;
+        }
+
+        // 如果不合法或者为空，尝试在自己的子物体里找个同名的
+        if (targetFixedPosition != null)
+        {
+            foreach (Transform t in GetComponentsInChildren<Transform>(true))
+            {
+                if (t != transform && t.name == targetFixedPosition.name)
+                {
+                    targetFixedPosition = t;
+                    return t;
+                }
+            }
+        }
+
+        // 终极兜底：如果有子节点，绝对霸道地拿第一个做锚点
+        if (transform.childCount > 0)
+        {
+            targetFixedPosition = transform.GetChild(0);
+            return targetFixedPosition;
+        }
+
+        // 连子物体都没有时，绝不移动
+        return null;
+    }
+
     private void Awake()
     {
+        // 在启动时先校验一次，断绝任何挂载在外的危险引用
+        GetValidTarget();
+
         _collider = GetComponent<SphereCollider>();
         _lineRenderer = GetComponent<LineRenderer>();
 
@@ -55,6 +90,14 @@ public class AnchorStone : MonoBehaviour
     {
         if (_playerInside == null) return;
 
+        // 【防抢夺防虚留检查】：如果玩家由于某种原因(比如位移技能或其他触发异常)远离了本石头，主动切断连接
+        if (Vector3.Distance(transform.position, _playerInside.transform.position) > radius * 2.0f)
+        {
+            if (_isAnchoring) StopAnchoring();
+            _playerInside = null;
+            return;
+        }
+
         // Check Input
         if (Input.GetKey(interactKey))
         {
@@ -62,13 +105,17 @@ public class AnchorStone : MonoBehaviour
             {
                 StartAnchoring();
             }
-            else if (targetFixedPosition != null)
+            else
             {
-                // 持有F键期间持续保持在固定位置
-                CharacterController cc = _playerInside.GetComponent<CharacterController>();
-                if (cc != null) cc.enabled = false;
-                _playerInside.transform.position = targetFixedPosition.position;
-                if (cc != null) cc.enabled = true;
+                Transform validTarget = GetValidTarget();
+                if (validTarget != null)
+                {
+                    // 持有F键期间持续保持在固定位置
+                    CharacterController cc = _playerInside.GetComponent<CharacterController>();
+                    if (cc != null) cc.enabled = false;
+                    _playerInside.transform.position = validTarget.position;
+                    if (cc != null) cc.enabled = true;
+                }
             }
         }
         else
@@ -82,16 +129,20 @@ public class AnchorStone : MonoBehaviour
 
     private void StartAnchoring()
     {
+        // 如果玩家已被其他石头锚定（非本石头掌控中），放弃抢夺，防止多石抢人造成的穿梭闪烁
+        if (_playerInside.IsAnchored && !_isAnchoring) return;
+
         _isAnchoring = true;
         _playerInside.IsAnchored = true;
         
-        if (targetFixedPosition != null)
+        Transform validTarget = GetValidTarget();
+        if (validTarget != null)
         {
             // 在修改Transform.position前需要暂时关闭CharacterController
             CharacterController cc = _playerInside.GetComponent<CharacterController>();
             if (cc != null) cc.enabled = false;
             
-            _playerInside.transform.position = targetFixedPosition.position;
+            _playerInside.transform.position = validTarget.position;
             
             if (cc != null) cc.enabled = true;
         }
@@ -159,15 +210,19 @@ public class AnchorStone : MonoBehaviour
         // Update collider radius in editor when changing radius
         if (_collider == null) _collider = GetComponent<SphereCollider>();
         if (_collider != null) _collider.radius = radius;
+
+        // 在编辑器里实时纠偏，防止用户肉眼看到Gizmo球跑到其他石头底下！
+        GetValidTarget();
     }
 
     private void OnDrawGizmos()
     {
         // 可视化目标固定位置的大致区域
-        if (targetFixedPosition != null)
+        Transform target = GetValidTarget();
+        if (target != null)
         {
             Gizmos.color = fixedPositionAreaColor;
-            Gizmos.DrawSphere(targetFixedPosition.position, fixedPositionVisualRadius);
+            Gizmos.DrawSphere(target.position, fixedPositionVisualRadius);
         }
     }
 }
